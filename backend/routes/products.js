@@ -5,14 +5,25 @@ const router = express.Router();
 const mongoose = require('mongoose');
 const multer = require('multer');
 
-
+const FILE_TYPE_MAP = {
+    'image/png': 'png',
+    'image/jpeg': 'jpeg',
+    'image/jpg': 'jpg',
+}
 const storage = multer.diskStorage({
     destination: function(req, file, cb) {
-        cb(null, 'public/uploads')
+        const isValid = FILE_TYPE_MAP[file.mimetype];
+        let uploadError = new Error('invalid image type');
+        if (isValid) {
+            uploadError = null
+        }
+        cb(uploadError, 'public/uploads')
     },
     filename: function(req, file, cb) {
+
         const fileName = file.originalname.split(' ').join('-');
-        cb(null, file.fileName + '-' + Date.now)
+        const extension = FILE_TYPE_MAP[file.mimetype];
+        cb(null, `${fileName}-${ Date.now()}.${extension}`)
     }
 })
 
@@ -46,17 +57,17 @@ router.get(`/:id`, async(req, res) => {
     res.send(product);
 })
 
-router.post(`/`, uploadOptions.single('image'), async(req, res) => {
+router.post(`/`, uploadOptions.single('images'), async(req, res) => {
     const category = await Category.findById(req.body.category);
     if (!category) return res.status(400).send('Invalid Category')
 
     const fileName = req.file.filename
-    const basePath = `${req.protocol}://${req.get('host')}/public/upload/`;
+    const basePath = `${req.protocol}://${req.get('host')}/public/uploads/`;
     const product = new Product({
         name: req.body.name,
         description: req.body.description,
         richDescription: req.body.richDescription,
-        image: `${basePath}${fileName}`, // "http://localhost:3000/public/upload/image-1234"
+        images: `${basePath}${fileName}`, // "http://localhost:3000/public/upload/image-1234"
         brand: req.body.brand,
         price: req.body.price,
         category: req.body.category,
@@ -89,7 +100,7 @@ router.put(`/:id`, async(req, res) => {
             name: req.body.name,
             description: req.body.description,
             richDescription: req.body.richDescription,
-            image: req.body.image,
+            images: req.body.image,
             brand: req.body.brand,
             price: req.body.price,
             category: req.body.category,
